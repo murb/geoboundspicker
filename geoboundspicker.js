@@ -38,7 +38,13 @@
         //default settings for options
         this.parentEl = 'body';
         this.element = $(element);
-        this.ranges = {};
+        this.areas = {};
+        this.boundingBox = {
+          north: null,
+          east: null,
+          south: null,
+          west: null
+        }
 
         this.opens = 'right';
         if (this.element.hasClass('pull-right'))
@@ -48,17 +54,22 @@
         if (this.element.hasClass('dropup'))
             this.drops = 'up';
 
-        this.buttonClasses = 'btn btn-sm';
-        this.applyClass = 'btn-success';
-        this.cancelClass = 'btn-default';
-
         this.callback = function() { };
 
         //some state information
         this.isShowing = false;
         this.leftCalendar = {};
         this.rightCalendar = {};
-
+        this.locale = {
+          applyLabel: 'Apply',
+          cancelLabel: 'Cancel',
+          northLabel: 'Noord',
+          southLabel: 'Zuid',
+          eastLabel: 'Oost',
+          westLabel: 'West',
+          coordinatesLegend: 'Coordinaten'
+        };
+        
         //custom options from user
         if (typeof options !== 'object' || options === null)
             options = {};
@@ -70,9 +81,64 @@
         //html template for the picker UI
         if (typeof options.template !== 'string')
             options.template = '<div class="geoboundspicker dropdown-menu">' +
-            '<div class="ranges"><ul><li data-value="NONE">Geen beperking op gebied</li><li data-value="NL">Nederland</li><li data-value="EU">Europa</li><li data-value="WRLD">Wereld</li><li data-value="CUSTOM">Aangepast</li></ul></div>' +
-            '<div class="openlayersmap"></div>' +
+            '<div class="navigation"><ul class="areas"></ul>'+
+            '<button class="btn btn-sm applyBtn">'+this.locale.applyLabel+'</button>' +
+            '<button class="btn btn-sm cancelBtn">'+this.locale.cancelLabel+'</button></div>' +
+            '<div class="custom"><div class="openlayersmap"></div><form><legend>'+this.locale.coordinatesLegend+'</legend>'+
+            '<label class="north"><input name="north" /><span>'+this.locale.northLabel+'</span></label>'+
+            '<label class="west"><input name="west" /><span>'+this.locale.westLabel+'</span></label>'+
+            '<label class="east"><input name="east" /><span>'+this.locale.eastLabel+'</span></label>'+
+            '<label class="south"><input name="south" /><span>'+this.locale.southLabel+'</span></label>'+
+            '</form></div>' +
             '</div>';
+        
+        
+        //            .on('click.geoboundspicker', 'button.applyBtn', $.proxy(this.clickApply, this))
+            // .on('click.geoboundspicker', 'button.cancelBtn', $.proxy(this.clickCancel, this))
+        this.areas = [
+          {
+            label: "Geen beperking op gebied",
+            boundingBox: {
+              north: null,
+              east: null,
+              south: null,
+              west: null
+            }
+          },
+          {
+            label: "Nederland",
+            boundingBox: {
+              north: 53.7,
+              east: 7.4,
+              south: 50.6,
+              west: 3.2
+            }
+          },
+          {
+            label: "Europa",
+            boundingBox: {
+              north: 72,
+              east: 35,
+              south: 34,
+              west: -25
+            }
+          },
+          {
+            label: "Wereld",
+            boundingBox: {
+              north: 90,
+              east: 180,
+              south: -90,
+              west: -180
+            }
+          },
+          {
+            label: "Aangepast",
+            showMap: true
+          }
+        ]
+        //  <li data-value="NONE">Geen beperking op gebied</li><li data-value="NL">Nederland</li><li data-value="EU">Europa</li><li data-value="WRLD">Wereld</li><li data-value="CUSTOM">Aangepast</li>
+      
 
         this.parentEl = (options.parentEl && $(options.parentEl).length) ? $(options.parentEl) : $(this.parentEl);
         this.container = $(options.template).appendTo(this.parentEl);
@@ -103,40 +169,26 @@
         var container = this.container;
         var element = this.element;
         
-        this.container.find("#"+this.olMapId).hide();
-        this.container.find("li[data-value='CUSTOM']").click(function(e) {
-           //var container = $(e.target).parents(".dropdown-menu");
+        var areasContainer = this.container.find("ul.areas")
+        $(this.areas).each(function(index, listitem) {
+          var html = "<li>"+listitem.label+"</li>";
+          html = $(html).data("geoboundspicker-area",listitem)
+          areasContainer.append(html);  
+        });
+        
+        this.container.find(".custom").hide();
 
-           container.find(".openlayersmap").show();
-           element.text("Aangepast");
-        });
-        this.container.find("li[data-value='NL'], li[data-value='EU'], li[data-value='WRLD'], li[data-value='NONE']").click(function(e) {
-           //var container = $(e.target).parents(".dropdown-menu");
-          
-           container.find(".openlayersmap").hide();
-            container.hide();
-                       element.text($(e.target).text());
-        });
         
 
         //
         // handle all the possible options overriding defaults
         //
 
-        if (typeof options.applyClass === 'string')
-            this.applyClass = options.applyClass;
-
-        if (typeof options.cancelClass === 'string')
-            this.cancelClass = options.cancelClass;
-
         if (typeof options.opens === 'string')
             this.opens = options.opens;
 
         if (typeof options.drops === 'string')
             this.drops = options.drops;
-
-        if (typeof options.buttonClasses === 'string')
-            this.buttonClasses = options.buttonClasses;
 
         if (typeof options.buttonClasses === 'object')
             this.buttonClasses = options.buttonClasses.join(' ');
@@ -160,16 +212,17 @@
 
         this.container.addClass('opens' + this.opens);
 
-        //apply CSS classes and labels to buttons
-        this.container.find('.applyBtn, .cancelBtn').addClass(this.buttonClasses);
-        if (this.applyClass.length)
-            this.container.find('.applyBtn').addClass(this.applyClass);
-        if (this.cancelClass.length)
-            this.container.find('.cancelBtn').addClass(this.cancelClass);
-
         //
         // event listeners
         //
+
+        this.container.find('.areas')
+            .on('click.geoboundspicker', 'button.applyBtn', $.proxy(this.clickApply, this))
+            .on('click.geoboundspicker', 'button.cancelBtn', $.proxy(this.clickCancel, this))
+            .on('click.geoboundspicker', 'li', $.proxy(this.clickArea, this))
+            .on('mouseenter.geoboundspicker', 'li', $.proxy(this.hoverArea, this))
+            .on('mouseleave.geoboundspicker', 'li', $.proxy(this.updateFormInputs, this));
+
 
         if (this.element.is('input')) {
             this.element.on({
@@ -193,7 +246,7 @@
 
         updateFormInputs: function() {
 
-            this.container.find('button.applyBtn').attr('disabled', 'disabled');
+            // this.container.find('button.applyBtn').attr('disabled', 'disabled');
 
         },
 
@@ -317,8 +370,9 @@
         },
 
         clickApply: function(e) {
-            this.hide();
-            this.element.trigger('apply.geoboundspicker', this);
+          this.hideCustom();
+          this.hide();
+          this.element.trigger('apply.geoboundspicker', this);
         },
 
         clickCancel: function(e) {
@@ -353,6 +407,42 @@
             this.container.remove();
             this.element.off('.geoboundspicker');
             this.element.removeData();
+        },
+        
+        hoverArea: function(e) {
+          
+        },
+        
+        updateCoordinates: function(boundingBox) {
+          this.boundingBox.north = boundingBox.north;
+          this.boundingBox.east = boundingBox.east;
+          this.boundingBox.south = boundingBox.south;
+          this.boundingBox.west = boundingBox.west;
+          this.container.find("input[name='north']").val(boundingBox.north);
+          this.container.find("input[name='east']").val(boundingBox.east);
+          this.container.find("input[name='south']").val(boundingBox.south);
+          this.container.find("input[name='west']").val(boundingBox.west);
+        },
+        
+        clickArea: function(e) {
+          var boundingBoxAreaData = $(e.target).data("geoboundspicker-area");
+          if (typeof boundingBoxAreaData.boundingBox === 'object') {
+            this.updateCoordinates(boundingBoxAreaData.boundingBox)
+            
+          }
+          if (boundingBoxAreaData.showMap) {
+            this.showCustom();
+          } else {
+            this.clickApply();
+          }
+        },
+        
+        showCustom: function() {
+          this.container.find(".custom").show();
+        },
+        
+        hideCustom: function() {
+          this.container.find(".custom").hide();
         }
 
     };
