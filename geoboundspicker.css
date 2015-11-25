@@ -179,9 +179,12 @@
 }
 
 .geoboundspicker input {
-  width: 3em;
+  width: 4em;
   font-weight: normal;
   float: right;
+}
+.geoboundspicker input.error {
+  border: 1px solid #f00;
 }
 .geoboundspicker .openlayersmap {
   float: left;
