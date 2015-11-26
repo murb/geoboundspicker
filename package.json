@@ -1,7 +1,7 @@
 {
   "name": "geoboundspicker",
   "version": "0.1",
-  "description": "Geo bounds picker component (for Bootstrap)",
+  "description": "Geo bounds picker component",
   "main": "geoboundspicker.js",
   "style": "geoboundspicker.css",
   "scripts": {
@@ -16,7 +16,7 @@
     "email": "github@murb.nl",
     "url": "https://murb.nl"
   },
-  "license": "MIT",
+  "license": "PD",
   "bugs": {
     "url": "https://github.com/murb/geoboundspicker/issues"
   },
