@@ -186,6 +186,10 @@
 .geoboundspicker input.error {
   border: 1px solid #f00;
 }
+.geoboundspicker .buttons {
+  text-align: right;
+  margin-top: 1em;
+}
 .geoboundspicker .openlayersmap {
   float: left;
   border-radius: 5px;

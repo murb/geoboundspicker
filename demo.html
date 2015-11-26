@@ -30,7 +30,63 @@
     
       <script type="text/javascript">
         $(document).ready(function() {
-          $('h1').geoboundspicker();
+          $('h1').geoboundspicker({
+            map: {
+              tile_wms_url: 'https://data.knmi.nl/wms-map/cgi-bin/bgmaps.cgi',
+              layers: 'world_baselayer,world_overlay',
+            },
+            locale: {
+              applyLabel: 'Toepassen',
+              // cancelLabel: 'Cancel',
+              northLabel: 'Noord',
+              southLabel: 'Zuid',
+              eastLabel: 'Oost',
+              westLabel: 'West',
+              coordinatesLegend: 'Coordinaten'
+            },
+            boundingBox: {
+              north: 90,
+              east: 180,
+              south: -90,
+              west: -180
+            },
+            areas: [
+              {
+                label: "Nederland",
+                boundingBox: {
+                  north: 53.7,
+                  east: 7.4,
+                  south: 50.6,
+                  west: 3.2
+                }
+              },
+              {
+                label: "Europa",
+                boundingBox: {
+                  north: 72,
+                  east: 35,
+                  south: 34,
+                  west: -25
+                }
+              },
+              {
+                label: "Wereld",
+                boundingBox: {
+                  north: 90,
+                  east: 180,
+                  south: -90,
+                  west: -180
+                }
+              },
+              {
+                label: "Aangepast",
+                showMap: true
+              }
+            ]
+          }, function(e){
+            console.log("set values!");
+            console.log(this.boundingBox);
+          });
         });
       </script>
 

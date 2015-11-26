@@ -1,6 +1,11 @@
-# Georange picker
+# Geobounds picker
 
-The basic outline of this georange picker has been based on the [bootstrap-daterangepicker](https://github.com/dangrossman/bootstrap-daterangepicker) by [Dan Grossman](https://github.com/dangrossman). I'm publishing this, but this is seriously work in progress and **unfinished**.
+The basic outline of this georange picker has been based on the [bootstrap-daterangepicker](https://github.com/dangrossman/bootstrap-daterangepicker) by [Dan Grossman](https://github.com/dangrossman). I'm publishing this, but it still lacks configuration options.
+
+## TODO
+
+* Support different projections
+* Make map settings more configurable
 
 ## License
 
