@@ -65,6 +65,17 @@
         if (!this._isBetween(this.west, -180, 180)) fields.push("west"); 
         return fields;
       },
+      hasNoValues: function() {
+        return ((this.north === null &&
+           this.east === null &&
+           this.west === null &&
+           this.south === null)
+            ||
+          (typeof this.north === 'undefined' &&
+           typeof this.east === 'undefined' &&
+           typeof this.west === 'undefined' &&
+           typeof this.south === 'undefined'))
+      },
       autoCorrectFields: function() {
         this.north = this._makeBetween(this.north, -90,90);
         this.south = this._makeBetween(this.south, -90,90);
@@ -72,10 +83,14 @@
         this.west = this._makeBetween(this.west, -180,180);
       },
       isEqual: function(that) {
-        return (this.north == that.north &&
-        this.south == that.south &&
-        this.west == that.west &&
-        this.east == that.east)
+        return (
+          (this.north === that.north &&
+           this.south === that.south &&
+           this.west === that.west &&
+           this.east === that.east) 
+                   ||
+          (this.hasNoValues() && (that === null || that === {}) )
+        )
       },
       updateWithOlExtend: function(olExtend) {
         var left = olExtend[0];
@@ -84,10 +99,10 @@
         var bottom = olExtend[1];
 
         if (top > 90) {
-        	top = 90;
+          top = 90;
         }
         if (bottom < -90) {
-        	bottom = -90;
+          bottom = -90;
         }
 
         if (right < left) {
@@ -97,24 +112,24 @@
         }
 
         if (right - left > 360 ) {
-        	left = -180;
-        	right = 180;
+          left = -180;
+          right = 180;
         }
 
         if (right > 180) {
-        	right = right - 360;
+          right = right - 360;
         } else if (right < -180) {
-        	right = right + 360;
+          right = right + 360;
         }
         if (left < -180) {
-        	left = left + 360;
+          left = left + 360;
         } else if (left > 180) {
-        	left = left - 360;
+          left = left - 360;
         }
 
         if (top < bottom) {
-            bottom = olExtend[3];
-            top = olExtend[1];
+          bottom = olExtend[3];
+          top = olExtend[1];
         }
 
         this.east = right;
@@ -144,12 +159,7 @@
         westLabel: 'West',
         coordinatesLegend: 'Coordinates'
       },
-      boundingBox: {
-        north: 90,
-        east: 180,
-        south: -90,
-        west: -180
-      },
+      boundingBox: {},
       areas: [
         {
           label: "Netherlands",
@@ -177,12 +187,12 @@
             south: -90,
             west: -180
           }
-        },
-        {
-          label: "Custom",
-          showMap: true
         }
       ],
+      includeNone: true,
+      noneLabel: 'No geoselection',
+      includeCustom: true,
+      customLabel: 'Custom',
       opens: 'right',
       drops: 'down'
     }
@@ -190,10 +200,6 @@
     //custom options from user
     if (typeof options !== 'object' || options === null)
       options = {};
-
-    //allow setting options with data attributes
-    //data-api options will be overwritten with custom javascript options
-    // options = $.extend(this.element.data(), options);
 
     this.settings = $.extend(this.settings, options);
     this.boundingBox.north = this.settings.boundingBox.north;
@@ -222,9 +228,6 @@
     
     this.container.find(".custom").hide();
 
-    // if (typeof options.autoUpdateInput === 'boolean')
-    //   this.autoUpdateInput = options.autoUpdateInput;
-
     if (typeof cb === 'function') {
         this.callback = cb;
     }
@@ -235,7 +238,6 @@
 
     this.container
       .on('click.geoboundspicker', 'button.applyBtn', $.proxy(this.clickApply, this))
-      // .on('click.geoboundspicker', 'button.cancelBtn', $.proxy(this.clickCancel, this))
       .on('click.geoboundspicker', 'li', $.proxy(this.clickArea, this))
       .on('mouseenter.geoboundspicker', 'li', $.proxy(this.hoverArea, this))
       .on('keydown.geoboundspicker', 'li', $.proxy(this.keydownArea, this));
@@ -270,77 +272,91 @@
       myGeoBoundsPicker = this;
       areasContainer.html("");
       var activeClass = false;
-      
+      if (this.settings.includeNone === true) {
+        var html = "<li tabindex=0>"+this.settings.noneLabel+"</li>";
+        html = $(html).data("geoboundspicker-area", {showMap: false, boundingBox: {}} );
+        if (this.boundingBox.hasNoValues() && activeClass === false) {
+          html.addClass("active");
+          activeClass = true;
+        }
+        areasContainer.append(html);
+      }
       $(this.settings.areas).each(function(index, listitem) {
         var html = "<li tabindex=0>"+listitem.label+"</li>";
         html = $(html).data("geoboundspicker-area",listitem);
-        if (listitem.boundingBox && myGeoBoundsPicker.boundingBox.isEqual(listitem.boundingBox)) {
+        if (listitem.boundingBox && myGeoBoundsPicker.boundingBox.isEqual(listitem.boundingBox) && activeClass === false) {
           html.addClass("active"); 
           activeClass = true;
         }
-        if ((typeof listitem.boundingBox === 'undefined') && activeClass == false) {
-          html.addClass("active");
-          myGeoBoundsPicker.showCustom();
-          activeClass = true;       
-        }
+
         // if (listitem.showMap === true && activeClass) {
         // }
         areasContainer.append(html);  
       });
+      if (this.settings.includeCustom === true) {
+        var html = "<li tabindex=0>"+this.settings.customLabel+"</li>";
+        html = $(html).data("geoboundspicker-area", {showMap: true} );
+        if (activeClass === false) {
+          html.addClass("active");
+          myGeoBoundsPicker.showCustom();
+          activeClass = true;
+        }
+        areasContainer.append(html);
+      }
+      
     },
     initOpenLayers: function() {
       this.drawSource = new ol.source.Vector();
       this.vectorLayer = new ol.layer.Vector({
-          source : this.drawSource,
-          style : new ol.style.Style({
-              fill : new ol.style.Fill({
-                  color : 'rgba(255, 255, 255, 0.5)'
-              }),
-              stroke : new ol.style.Stroke({
-                  color : '#ffcc33',
-                  width : 2
-              }),
-              image : new ol.style.Circle({
-                  radius : 7,
-                  fill : new ol.style.Fill({
-                      color : '#ffcc33'
-                  })
-              })
+        source : this.drawSource,
+        style : new ol.style.Style({
+          fill : new ol.style.Fill({
+            color : 'rgba(255, 255, 255, 0.5)'
+          }),
+          stroke : new ol.style.Stroke({
+            color : '#ffcc33',
+            width : 2
+          }),
+          image : new ol.style.Circle({
+            radius : 7,
+            fill : new ol.style.Fill({
+              color : '#ffcc33'
+            })
           })
+        })
       });
       
-      console.log(this.settings.map.layers);
       this.olMap = new ol.Map({
-          /*
-           * The View is basically default zoom level, center point, etc.
-           */
-          view : new ol.View({
-              center : [ 5.178291, 52.099233 ],
-              zoom : 4,
-              minZoom : 0,
-              extent : [ -180, -90, 180, 90 ],
-              projection : this.settings.projection
-          }),
-          /*
-           * The Layers are layers in the map. Layers here are a WMS layer
-           * and a layer for the drawings.
-           */
-          layers : [ 
-            new ol.layer.Tile({
-              source : new ol.source.TileWMS({
-                url : this.settings.map.tile_wms_url,
-                params : {
-                  LAYERS: this.settings.map.layers
-                }
-              })
-            })
-          ],
-          controls: ol.control.defaults({
-              attributionOptions: {
-                  collapsible: false
+        /*
+         * The View is basically default zoom level, center point, etc.
+         */
+        view : new ol.View({
+          center : [ 5.178291, 52.099233 ],
+          zoom : 4,
+          minZoom : 0,
+          extent : [ -180, -90, 180, 90 ],
+          projection : this.settings.projection
+        }),
+        /*
+         * The Layers are layers in the map. Layers here are a WMS layer
+         * and a layer for the drawings.
+         */
+        layers : [ 
+          new ol.layer.Tile({
+            source : new ol.source.TileWMS({
+              url : this.settings.map.tile_wms_url,
+              params : {
+                LAYERS: this.settings.map.layers
               }
-          }),
-          target : this.olMapId
+            })
+          })
+        ],
+        controls: ol.control.defaults({
+          attributionOptions: {
+            collapsible: false
+          }
+        }),
+        target : this.olMapId
       });
 
       this.olMap.addLayer(this.vectorLayer);
@@ -348,105 +364,118 @@
       var thisOlMap = this;
         // Adding the draw functionality.
       var geometryFunction = function(coordinates, geometry) {
-          if (!geometry) {
-              geometry = new ol.geom.Polygon(null);
-          }
-          var start = coordinates[0];
-          var end = coordinates[1];
-          geometry.setCoordinates([ [ start, [ start[0], end[1] ], end,
-                  [ end[0], start[1] ], start ] ]);
-          return geometry;
+        if (!geometry) {
+          geometry = new ol.geom.Polygon(null);
+        }
+        var start = coordinates[0];
+        var end = coordinates[1];
+        geometry.setCoordinates([ [ start, [ start[0], end[1] ], end,
+          [ end[0], start[1] ], start ] ]);
+        return geometry;
       };
 
       /* Adding the drawing interaction to the map. */
       this.drawFeature = new ol.interaction.Draw({
-          source : this.drawSource,
-          type : "LineString",
-          geometryFunction : geometryFunction,
-          maxPoints : 2,
-          clickTolerance: 20
+        source : this.drawSource,
+        type : "LineString",
+        geometryFunction : geometryFunction,
+        maxPoints : 2,
+        clickTolerance: 20
       })
 
       this.olMap.addInteraction(this.drawFeature);
       this.olMap.boxlayer = this.drawFeature;
       this.drawFeature.on('drawstart', function(e) {
-          thisOlMap.drawSource.clear();
+        thisOlMap.drawSource.clear();
       });
 
       this.drawFeature.on('drawend', function(e) {
-          var extent = e.feature.getGeometry().getExtent();
+        var extent = e.feature.getGeometry().getExtent();
 
-          // not ideal, but didn't manage to clear the 
-          // drawed drawing on drawend.
-          e.feature.setStyle(new ol.style.Style({
-            zIndex: -100
-          }));
+        // not ideal, but didn't manage to clear the 
+        // drawed drawing on drawend.
+        e.feature.setStyle(new ol.style.Style({
+          zIndex: -100
+        }));
 
-          thisOlMap.boundingBox.updateWithOlExtend(extent);
-          thisOlMap.drawBoundingBox();
-          thisOlMap.updateCoordinateInputFields();
-          thisOlMap.renderAreas();
-          thisOlMap.formInputsChanged();
+        thisOlMap.boundingBox.updateWithOlExtend(extent);
+        thisOlMap.drawBoundingBox();
+        thisOlMap.updateCoordinateInputFields();
+        thisOlMap.renderAreas();
+        thisOlMap.formInputsChanged();
           
       });
     },
+    describe: function() {
+      var myGeoBoundsPicker = this;
+      var description = this.settings.customLabel;
+      if (this.settings.includeNone && myGeoBoundsPicker.boundingBox.hasNoValues()) {
+        description = this.settings.noneLabel;
+      };
+      $(this.settings.areas).each(function(index, listitem) {
+        if (listitem.boundingBox && myGeoBoundsPicker.boundingBox.isEqual(listitem.boundingBox)) {
+          description = listitem.label;
+        }
+      });
+      return description;
+    },
 
     move: function() {
-        var parentOffset = { top: 0, left: 0 },
-            containerTop;
-        var parentRightEdge = $(window).width();
-        if (!this.parentEl.is('body')) {
-            parentOffset = {
-                top: this.parentEl.offset().top - this.parentEl.scrollTop(),
-                left: this.parentEl.offset().left - this.parentEl.scrollLeft()
-            };
-            parentRightEdge = this.parentEl[0].clientWidth + this.parentEl.offset().left;
-        }
+      var parentOffset = { top: 0, left: 0 },
+        containerTop;
+      var parentRightEdge = $(window).width();
+      if (!this.parentEl.is('body')) {
+        parentOffset = {
+          top: this.parentEl.offset().top - this.parentEl.scrollTop(),
+          left: this.parentEl.offset().left - this.parentEl.scrollLeft()
+        };
+        parentRightEdge = this.parentEl[0].clientWidth + this.parentEl.offset().left;
+      }
 
-        if (this.drops == 'up')
-            containerTop = this.element.offset().top - this.container.outerHeight() - parentOffset.top;
-        else
-            containerTop = this.element.offset().top + this.element.outerHeight() - parentOffset.top;
-        this.container[this.drops == 'up' ? 'addClass' : 'removeClass']('dropup');
+      if (this.drops == 'up')
+        containerTop = this.element.offset().top - this.container.outerHeight() - parentOffset.top;
+      else
+        containerTop = this.element.offset().top + this.element.outerHeight() - parentOffset.top;
+      this.container[this.drops == 'up' ? 'addClass' : 'removeClass']('dropup');
 
-        if (this.settings.opens == 'left') {
-            this.container.css({
-                top: containerTop,
-                right: parentRightEdge - this.element.offset().left - this.element.outerWidth(),
-                left: 'auto'
-            });
-            if (this.container.offset().left < 0) {
-                this.container.css({
-                    right: 'auto',
-                    left: 9
-                });
-            }
-        } else if (this.settings.opens == 'center') {
-            this.container.css({
-                top: containerTop,
-                left: this.element.offset().left - parentOffset.left + this.element.outerWidth() / 2
-                        - this.container.outerWidth() / 2,
-                right: 'auto'
-            });
-            if (this.container.offset().left < 0) {
-                this.container.css({
-                    right: 'auto',
-                    left: 9
-                });
-            }
-        } else {
-            this.container.css({
-                top: containerTop,
-                left: this.element.offset().left - parentOffset.left,
-                right: 'auto'
-            });
-            if (this.container.offset().left + this.container.outerWidth() > $(window).width()) {
-                this.container.css({
-                    left: 'auto',
-                    right: 0
-                });
-            }
+      if (this.settings.opens == 'left') {
+          this.container.css({
+              top: containerTop,
+              right: parentRightEdge - this.element.offset().left - this.element.outerWidth(),
+              left: 'auto'
+          });
+          if (this.container.offset().left < 0) {
+              this.container.css({
+                  right: 'auto',
+                  left: 9
+              });
+          }
+      } else if (this.settings.opens == 'center') {
+        this.container.css({
+          top: containerTop,
+          left: this.element.offset().left - parentOffset.left + this.element.outerWidth() / 2
+                - this.container.outerWidth() / 2,
+          right: 'auto'
+        });
+        if (this.container.offset().left < 0) {
+          this.container.css({
+            right: 'auto',
+            left: 9
+          });
         }
+      } else {
+        this.container.css({
+          top: containerTop,
+          left: this.element.offset().left - parentOffset.left,
+          right: 'auto'
+        });
+        if (this.container.offset().left + this.container.outerWidth() > $(window).width()) {
+          this.container.css({
+            left: 'auto',
+            right: 0
+          });
+        }
+      }
     },
 
     show: function(e) {
@@ -516,14 +545,7 @@
       this.element.trigger('apply.geoboundspicker', this);
     },
 
-    // clickCancel: function(e) {
- //      this.hide();
- //      this.element.trigger('cancel.geoboundspicker', this);
- //    },
-
     formInputsChanged: function(e) {
-      console.log("forminputschanged");
-      // this.container.find('button.applyBtn').removeAttr('disabled');
       this.renderAreas();
     },
 
@@ -578,8 +600,8 @@
     },
     
     updateCoordinateFromInputField: function(bound) {
-      this.formInputsChanged();
       this.boundingBox[bound] = parseFloat(this.container.find("input[name='"+bound+"']").val());
+      this.formInputsChanged();
     },
     
     updateCoordinatesFromInputFields: function() {
@@ -630,7 +652,7 @@
       var fieldName = event.target.name;
       var oldValue = this.boundingBox[fieldName];
       this.updateCoordinateFromInputField(fieldName);
-    
+      console.log(this.boundingBox);
       this.autoCorrectFields();
       // this.updateCoordinatesFromInputFields();
       this.drawBoundingBox();
@@ -670,7 +692,6 @@
         var extent = ol.extent.boundingExtent(ring);
         this.olMap.getView().fit(extent, this.olMap.getSize());      	
 
-        // featureAdded = true;
       }
     }
   };
@@ -686,3 +707,4 @@
   };
 
 }));
+

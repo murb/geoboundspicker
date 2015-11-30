@@ -77,15 +77,17 @@
                   south: -90,
                   west: -180
                 }
-              },
-              {
-                label: "Aangepast",
-                showMap: true
               }
-            ]
+            ],
+            includeCustom: true,
+            customLabel: "Aangepast",
+            includeNone: true,
+            noneLabel: 'Geen geografische beperking',
           }, function(e){
             console.log("set values!");
+            console.log(this.boundingBox.hasNoValues());
             console.log(this.boundingBox);
+            console.log(this.describe());
           });
         });
       </script>
