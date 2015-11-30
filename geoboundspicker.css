@@ -223,12 +223,17 @@
   cursor: pointer;
 }
 
-.geoboundspicker .areas li.active, .geoboundspicker .areas li:hover {
+.geoboundspicker .areas li.active {
   background: #08c;
   border: 1px solid #08c;
   color: #fff;
 }
-
+.geoboundspicker .areas li:hover, .geoboundspicker .areas li:focus {
+  border: 1px solid #08c;
+}
+.geoboundspicker .areas li.active:hover, .geoboundspicker .areas li.active:focus {
+  border: 1px solid #048;
+}
 
 /*  Larger Screen Styling */
 @media (min-width: 564px) {

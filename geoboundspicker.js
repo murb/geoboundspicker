@@ -221,12 +221,13 @@
 
     this.parentEl = (options.parentEl && $(options.parentEl).length) ? $(options.parentEl) : $(this.parentEl);
     this.container = $(this.template).appendTo(this.parentEl);
-    this.olMapId = "geoboundsmapid-"+$('.geoboundspicker').length;
+    this.containerId = this.container.attr("id") || this.container.attr("id","geoboundspicker-"+this.element.offset().top+"-"+this.element.offset().left).attr("id");
+    this.olMapId = "geoboundspicker-geoboundsmapid-"+this.element.offset().top+"-"+this.element.offset().left;
     this.container.find(".openlayersmap").attr("id",this.olMapId).css({width: '400px', height: '200px'});
     
     this.initOpenLayers();
     
-    this.container.find(".custom").hide();
+    this.hideCustom();
 
     if (typeof cb === 'function') {
         this.callback = cb;
@@ -253,8 +254,17 @@
         'keydown.geoboundspicker': $.proxy(this.keydown, this)
       });
     } else {
-      this.element.on('click.geoboundspicker', $.proxy(this.toggle, this));
+    
+      this.element.on({
+        'click.geoboundspicker': $.proxy(this.show, this),
+        'focus.geoboundspicker': $.proxy(this.show, this),
+        'keydown.geoboundspicker': $.proxy(this.keydown, this)
+      });
     }
+    
+    //accessibility aria
+    this.element.attr("aria-haspopup",true);
+    this.element.attr("aria-owns", this.containerId);
   };
 
   GeoBoundsPicker.prototype = {
@@ -273,7 +283,7 @@
       areasContainer.html("");
       var activeClass = false;
       if (this.settings.includeNone === true) {
-        var html = "<li tabindex=0>"+this.settings.noneLabel+"</li>";
+        var html = '<li tabindex=0 role="button">'+this.settings.noneLabel+"</li>";
         html = $(html).data("geoboundspicker-area", {showMap: false, boundingBox: {}} );
         if (this.boundingBox.hasNoValues() && activeClass === false) {
           html.addClass("active");
@@ -282,7 +292,7 @@
         areasContainer.append(html);
       }
       $(this.settings.areas).each(function(index, listitem) {
-        var html = "<li tabindex=0>"+listitem.label+"</li>";
+        var html = '<li tabindex=0 role="button">'+listitem.label+"</li>";
         html = $(html).data("geoboundspicker-area",listitem);
         if (listitem.boundingBox && myGeoBoundsPicker.boundingBox.isEqual(listitem.boundingBox) && activeClass === false) {
           html.addClass("active"); 
@@ -294,7 +304,7 @@
         areasContainer.append(html);  
       });
       if (this.settings.includeCustom === true) {
-        var html = "<li tabindex=0>"+this.settings.customLabel+"</li>";
+        var html = '<li tabindex=0 role="button">'+this.settings.customLabel+"</li>";
         html = $(html).data("geoboundspicker-area", {showMap: true} );
         if (activeClass === false) {
           html.addClass("active");
@@ -549,26 +559,38 @@
       this.renderAreas();
     },
 
-    elementChanged: function() {
+    elementChanged: function(e) {
         if (!this.element.is('input')) return;
         if (!this.element.val().length) return;
 
         this.updateView();
     },
+    
+    handleArrowKeys: function(e) {
+    
+      if ($(this.container).find("li:focus").length === 0) {
+        $(this.container).find("li.active").focus();
+      } else {
+        if (e.keyCode === 38) {
+          $(this.container).find("li:focus").prev().focus();
+        } else if (e.keyCode === 40) {
+          $(this.container).find("li:focus").next().focus();
+        }
+      }
+    },
 
     keydown: function(e) {
         //hide on tab or enter
-        if ((e.keyCode === 9) || (e.keyCode === 13)) {
-            this.hide();
-        }
+      if ([38,40].lastIndexOf(e.keyCode) >= 0) this.handleArrowKeys(e);
+      if (e.keyCode === 9) this.hide();
+      if (e.keyCode === 13) this.toggle();
     },
     
     keydownArea: function(e) {
-      console.log(e.keyCode);
+      if ([38,40].lastIndexOf(e.keyCode) >= 0) this.handleArrowKeys(e);
       if ((e.keyCode === 13) || e.keyCode === 32) {
           this.clickArea(e);
       }
-      
     },
 
     updateElement: function() {
@@ -638,8 +660,8 @@
     },
     
     showCustom: function() {
-      // console.log("showCustom");
       this.container.find(".custom").show();
+      this.container.find(".custom").attr("aria-expanded", true); 
       this.olMap.updateSize();
       this.drawBoundingBox();
       this.updateCoordinateInputFields();
@@ -647,12 +669,12 @@
     
     hideCustom: function() {
       this.container.find(".custom").hide();
+      this.container.find(".custom").attr("aria-expanded", false); 
     },
     coordinateInputFieldChanged: function(event) {
       var fieldName = event.target.name;
       var oldValue = this.boundingBox[fieldName];
       this.updateCoordinateFromInputField(fieldName);
-      console.log(this.boundingBox);
       this.autoCorrectFields();
       // this.updateCoordinatesFromInputFields();
       this.drawBoundingBox();
