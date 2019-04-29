@@ -1,4 +1,4 @@
-# Geobounds picker
+# Geobounds picker (unmaintained)
 
 The basic outline of this georange picker has been based on the [bootstrap-daterangepicker](https://github.com/dangrossman/bootstrap-daterangepicker) by [Dan Grossman](https://github.com/dangrossman). I'm publishing this, but it still lacks configuration options.
 
